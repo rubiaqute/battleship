@@ -1,5 +1,5 @@
-import { createPlayer, createRoom, getRoomsWithOnePlayer } from "./data-handlers"
-import { COMMAND, CreatePlayerPayload } from "./types"
+import { addUserToRoom, createGame, createPlayer, createRoom, getRoomsWithOnePlayer } from "./data-handlers"
+import { AddUserToRoomPayload, COMMAND, CreatePlayerPayload } from "./types"
 
 export const registerPlayerController = (payload: CreatePlayerPayload) => {
     const {name, index} = createPlayer(payload)
@@ -18,4 +18,12 @@ export const updateRoomsController = () => {
 
 export const createRoomController = (currentPlayerId: number)=> {
     createRoom(currentPlayerId)
+}
+
+export const addUserController = (currentPlayerId: number, { indexRoom }: AddUserToRoomPayload) => {
+    return addUserToRoom(currentPlayerId, indexRoom)
+}
+
+export const createGameController = (playersId:number[]) => {
+    return createGame(playersId)
 }

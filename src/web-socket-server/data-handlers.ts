@@ -1,8 +1,9 @@
-import { CreatePlayerPayload, Player, Room, Winner } from "./types";
+import { CreatePlayerPayload, Game, Player, Room, Winner } from "./types";
 
 const players: Player[] = []
 const rooms: Room[] = []
 const winners: Winner[] = []
+const games: Game[] = []
 
 export const createPlayer = ({name, password}: CreatePlayerPayload)=> {
     const newPlayer: Player = {
@@ -20,6 +21,10 @@ export const createPlayer = ({name, password}: CreatePlayerPayload)=> {
 
 const getPlayer = (playerId: number) => {
     return players.find((player) => player.index === playerId)
+}
+
+const getRoomIndex = (roomId: number) => {
+    return rooms.findIndex((room) => room.roomId === roomId)
 }
 
 export const getRoomsWithOnePlayer = () => {
@@ -40,4 +45,31 @@ export const createRoom = (currentPlayerId: number) => {
 
        rooms.push(newRoom)
     }
+}
+
+export const addUserToRoom = (currentPlayerId: number, roomId: number) => {
+    const currentPlayer = getPlayer(currentPlayerId)
+    const roomToIndex = getRoomIndex(roomId)
+
+    if (currentPlayer && roomToIndex !== -1) {
+        rooms[roomToIndex].roomUsers.push({
+            name: currentPlayer.name,
+            index: currentPlayer.index
+        })
+
+        return rooms[roomToIndex].roomUsers.map((user)=> user.index)
+    }
+}
+
+export const createGame = (playersId: number[])=> {
+    const newGame: Game = {
+        turn: playersId[0],
+        playersId,
+        ships:[],
+        idGame: games.length + 1
+    }
+
+    games.push(newGame)
+
+    return newGame.idGame
 }
