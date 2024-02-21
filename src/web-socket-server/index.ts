@@ -1,6 +1,7 @@
 import { WebSocketServer, createWebSocketStream, WebSocket } from 'ws';
-import { addUserController, createGameController, createRoomController, registerPlayerController, updateRoomsController } from './controllers';
-import { AddUserToRoomPayload, COMMAND, CreatePlayerPayload, Socket } from './types';
+import { addShipsController, addUserController, createGameController, createRoomController, registerPlayerController, updateRoomsController } from './controllers';
+import { getGame, updateTurn } from './data-handlers';
+import { AddShipsPayload, AddUserToRoomPayload, COMMAND, CreatePlayerPayload, Game, Socket } from './types';
 
 const sockets: Socket[] = []
 
@@ -54,6 +55,17 @@ export const initWsServer = () => {
 
                     }
                     break;
+
+                case COMMAND.addShips:
+                    const payload = JSON.parse(request.data) as AddShipsPayload
+                    const updatedGame = addShipsController(payload)
+
+                    if (updatedGame.players.every((player)=> player.ships.length > 0)) {
+                        sendStartGame(updatedGame)
+                        updateTurn(updatedGame.idGame)
+                        sendTurn(updatedGame.idGame)
+                        
+                    }
             }
         })
 
@@ -92,5 +104,30 @@ const updateSocketWithPlayerId = (socketId: number, currentPlayerId: number) => 
     if (socket) {
         socket.currentPlayer = currentPlayerId
     }
-    
+}
+
+const sendStartGame = (game: Game) => {
+    sockets.forEach((socketItem)=> {
+        const playerData = game.players.find((player) => player.id === socketItem.currentPlayer)
+
+        if (socketItem.currentPlayer && playerData) {
+            sendDataFromWS(socketItem.socket, COMMAND.startGame, {
+                ships: playerData.ships,
+                currentPlayerIndex: playerData.id,
+            })
+        }
+    })
+}
+
+const sendTurn  = (gameId: number) => {
+    sockets.forEach((socketItem) => {
+        const game = getGame(gameId)
+        const playerData = game?.players.find((player) => player.id === socketItem.currentPlayer)
+
+        if (socketItem.currentPlayer && playerData) {
+            sendDataFromWS(socketItem.socket, COMMAND.turn, {
+                currentPlayer: game?.turn
+            })
+        }
+    })
 }

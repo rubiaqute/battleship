@@ -9,6 +9,12 @@ export interface AddUserToRoomPayload {
     indexRoom: number
 }
 
+export interface AddShipsPayload {
+    gameId: number,
+    ships: Ship[],
+    indexPlayer: number
+}
+
 export interface Room {
     roomId: number
     roomUsers: {
@@ -25,9 +31,11 @@ export interface Player {
 
 export interface Game {
     idGame: number
-    ships: Ship[]
     turn: number
-    playersId: number[]
+    players: {
+        id: number,
+        ships: Ship[]
+    }[]
 }
 
 export interface Ship {
@@ -47,7 +55,10 @@ export enum COMMAND {
     createRoom= 'create_room',
     updateRoom ='update_room',
     addUserToRoom = "add_user_to_room",
-    createGame = "create_game"
+    createGame = "create_game",
+    addShips = 'add_ships',
+    startGame = "start_game",
+    turn = "turn"
 }
 
 export interface Socket {

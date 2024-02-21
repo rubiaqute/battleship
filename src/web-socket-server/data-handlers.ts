@@ -1,4 +1,4 @@
-import { CreatePlayerPayload, Game, Player, Room, Winner } from "./types";
+import { AddShipsPayload, CreatePlayerPayload, Game, Player, Room, Winner } from "./types";
 
 const players: Player[] = []
 const rooms: Room[] = []
@@ -21,6 +21,14 @@ export const createPlayer = ({name, password}: CreatePlayerPayload)=> {
 
 const getPlayer = (playerId: number) => {
     return players.find((player) => player.index === playerId)
+}
+
+const getGameIndex = (gameId: number) => {
+    return games.findIndex((game) => game.idGame === gameId)
+}
+
+export const getGame = (gameId: number) => {
+    return games.find((game) => game.idGame === gameId)
 }
 
 const getRoomIndex = (roomId: number) => {
@@ -64,12 +72,39 @@ export const addUserToRoom = (currentPlayerId: number, roomId: number) => {
 export const createGame = (playersId: number[])=> {
     const newGame: Game = {
         turn: playersId[0],
-        playersId,
-        ships:[],
+        players: playersId.map((id)=>({
+            id,
+            ships: []
+        })),
         idGame: games.length + 1
     }
 
     games.push(newGame)
 
     return newGame.idGame
+}
+
+export const addShips = (payload: AddShipsPayload) => {
+    const gameIndex = getGameIndex(payload.gameId)
+
+    games[gameIndex].players = games[gameIndex].players.map((player)=> {
+        if (player.id === payload.indexPlayer) {
+            player.ships = payload.ships
+        }
+
+        return player
+    })
+
+    return games[gameIndex]
+}
+
+export const updateTurn = (gameId: number) => {
+    const gameIndex = getGameIndex(gameId)
+    const nextTurn = games[gameIndex].players.find((player) => player.id !== games[gameIndex].turn)?.id
+
+    if (nextTurn) {
+        games[gameIndex].turn = nextTurn
+    }
+
+    return nextTurn
 }

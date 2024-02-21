@@ -1,5 +1,5 @@
-import { addUserToRoom, createGame, createPlayer, createRoom, getRoomsWithOnePlayer } from "./data-handlers"
-import { AddUserToRoomPayload, COMMAND, CreatePlayerPayload } from "./types"
+import { addShips, addUserToRoom, createGame, createPlayer, createRoom, getRoomsWithOnePlayer, updateTurn } from "./data-handlers"
+import { AddShipsPayload, AddUserToRoomPayload, COMMAND, CreatePlayerPayload } from "./types"
 
 export const registerPlayerController = (payload: CreatePlayerPayload) => {
     const {name, index} = createPlayer(payload)
@@ -26,4 +26,12 @@ export const addUserController = (currentPlayerId: number, { indexRoom }: AddUse
 
 export const createGameController = (playersId:number[]) => {
     return createGame(playersId)
+}
+
+export const addShipsController = (payload: AddShipsPayload) => {
+    return addShips(payload)
+}
+
+export const updateTurnController = (gameId: number) => {
+    return updateTurn(gameId)
 }
