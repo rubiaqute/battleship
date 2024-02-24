@@ -1,5 +1,6 @@
-import { addShips, addUserToRoom, createGame, createPlayer, createRoom, getRoomsWithOnePlayer, updateTurn } from "./data-handlers"
-import { AddShipsPayload, AddUserToRoomPayload, COMMAND, CreatePlayerPayload } from "./types"
+import { addShips, addUserToRoom, attackShip, createGame, createPlayer, createRoom, getRoomsWithOnePlayer, startGame, updateTurn } from "./data-handlers"
+import { Battleship } from "./game"
+import { AddShipsPayload, AddUserToRoomPayload, Attack, COMMAND, CreatePlayerPayload, Game } from "./types"
 
 export const registerPlayerController = (payload: CreatePlayerPayload) => {
     const {name, index} = createPlayer(payload)
@@ -34,4 +35,12 @@ export const addShipsController = (payload: AddShipsPayload) => {
 
 export const updateTurnController = (gameId: number) => {
     return updateTurn(gameId)
+}
+
+export const startGameController = (gameId: number) => {
+    startGame(gameId)
+}
+
+export const attackShipController = (attackInfo: Attack) => {
+    return attackShip(attackInfo)
 }

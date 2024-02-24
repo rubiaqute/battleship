@@ -1,7 +1,8 @@
 import { WebSocketServer, createWebSocketStream, WebSocket } from 'ws';
-import { addShipsController, addUserController, createGameController, createRoomController, registerPlayerController, updateRoomsController } from './controllers';
-import { getGame, updateTurn } from './data-handlers';
-import { AddShipsPayload, AddUserToRoomPayload, COMMAND, CreatePlayerPayload, Game, Socket } from './types';
+import { addShipsController, addUserController, attackShipController, createGameController, createRoomController, registerPlayerController, startGameController, updateRoomsController } from './controllers';
+import { getEnemyId, getGame, updateTurn } from './data-handlers';
+import { Battleship } from './game';
+import { AddShipsPayload, AddUserToRoomPayload, Attack, AttackResult, COMMAND, CreatePlayerPayload, Game, SHOT_RESULT, Socket } from './types';
 
 const sockets: Socket[] = []
 
@@ -35,14 +36,15 @@ export const initWsServer = () => {
                     break; 
                 }
 
-                case COMMAND.createRoom:
+                case COMMAND.createRoom: {
                     if (currentPlayerId) {
                         createRoomController(currentPlayerId)
                         updateRooms()
                     }
                     break;
+                }
 
-                case COMMAND.addUserToRoom:
+                case COMMAND.addUserToRoom: {
                     if (currentPlayerId) {
                         const players = addUserController(currentPlayerId, JSON.parse(request.data) as AddUserToRoomPayload)
 
@@ -55,17 +57,34 @@ export const initWsServer = () => {
 
                     }
                     break;
+                }
 
-                case COMMAND.addShips:
+                case COMMAND.addShips: {
                     const payload = JSON.parse(request.data) as AddShipsPayload
                     const updatedGame = addShipsController(payload)
 
                     if (updatedGame.players.every((player)=> player.ships.length > 0)) {
+                        startGameController(updatedGame.idGame)
                         sendStartGame(updatedGame)
                         updateTurn(updatedGame.idGame)
                         sendTurn(updatedGame.idGame)
                         
                     }
+
+                    break;
+                }
+
+                case COMMAND.attack: {
+                    const payload = JSON.parse(request.data) as Attack
+                    const resultList = attackShipController(payload)
+                    sendAttackFeedback(payload, resultList)
+
+                    if (resultList.length === 1 && resultList[0].status === SHOT_RESULT.miss) {
+                        updateTurn(payload.gameId)
+                    } 
+                    
+                    sendTurn(payload.gameId)
+                }
             }
         })
 
@@ -128,6 +147,24 @@ const sendTurn  = (gameId: number) => {
             sendDataFromWS(socketItem.socket, COMMAND.turn, {
                 currentPlayer: game?.turn
             })
+        }
+    })
+}
+
+const sendAttackFeedback = (attackInfo: Attack, resultList: AttackResult[]) => {
+    sockets.forEach((socketItem) => {
+        const game = getGame(attackInfo.gameId)
+        const playerData = game?.players.find((player) => player.id === socketItem.currentPlayer)
+
+        if (socketItem.currentPlayer && playerData) {
+            resultList.forEach(({position, status})=> {
+                sendDataFromWS(socketItem.socket, COMMAND.attack, {
+                    currentPlayer: game?.turn,
+                    position,
+                    status,
+                })
+            })
+            
         }
     })
 }

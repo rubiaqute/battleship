@@ -1,4 +1,5 @@
-import { AddShipsPayload, CreatePlayerPayload, Game, Player, Room, Winner } from "./types";
+import { Battleship } from "./game";
+import { AddShipsPayload, Attack, CreatePlayerPayload, Game, Player, Room, Winner } from "./types";
 
 const players: Player[] = []
 const rooms: Room[] = []
@@ -76,6 +77,10 @@ export const createGame = (playersId: number[])=> {
             id,
             ships: []
         })),
+        battleShip: new Battleship(playersId.map((id) => ({
+            id,
+            ships: []
+        }))),
         idGame: games.length + 1
     }
 
@@ -90,6 +95,7 @@ export const addShips = (payload: AddShipsPayload) => {
     games[gameIndex].players = games[gameIndex].players.map((player)=> {
         if (player.id === payload.indexPlayer) {
             player.ships = payload.ships
+            games[gameIndex].battleShip.updateShipsInfo(payload)
         }
 
         return player
@@ -107,4 +113,19 @@ export const updateTurn = (gameId: number) => {
     }
 
     return nextTurn
+}
+
+export const getEnemyId = (gameId: number) => {
+    const gameIndex = getGameIndex(gameId)
+   return games[gameIndex].players.find((player) => player.id !== games[gameIndex].turn)?.id
+}
+
+export const startGame = (gameId: number) => {
+    const gameIndex = getGameIndex(gameId)
+    games[gameIndex].battleShip.startGame()
+}
+
+export const attackShip = (attackInfo: Attack) => {
+    const gameIndex = getGameIndex(attackInfo.gameId)
+    return games[gameIndex].battleShip.attack(attackInfo.indexPlayer, { x: attackInfo.x, y: attackInfo.y})
 }

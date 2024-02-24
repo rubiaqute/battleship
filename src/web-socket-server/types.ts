@@ -1,4 +1,5 @@
 import {WebSocket } from 'ws';
+import { Battleship } from './game';
 
 export interface CreatePlayerPayload  {
     name: string
@@ -13,6 +14,21 @@ export interface AddShipsPayload {
     gameId: number,
     ships: Ship[],
     indexPlayer: number
+}
+
+export interface Attack {
+    gameId: number,
+    x: number,
+    y: number,
+    indexPlayer: number
+}
+
+export interface AttackResult {
+    position: {
+        x: number,
+        y: number
+    }
+    status: SHOT_RESULT
 }
 
 export interface Room {
@@ -36,6 +52,7 @@ export interface Game {
         id: number,
         ships: Ship[]
     }[]
+    battleShip: Battleship
 }
 
 export interface Ship {
@@ -48,6 +65,12 @@ export interface Ship {
     type: "small" | "medium" | "large" | "huge",
 }
 
+export enum SHOT_RESULT {
+    miss='miss',
+    shot='shot',
+    killed='killed'
+}
+
 export type Winner = Pick<Player, 'name' | 'index'>
 
 export enum COMMAND {
@@ -58,7 +81,8 @@ export enum COMMAND {
     createGame = "create_game",
     addShips = 'add_ships',
     startGame = "start_game",
-    turn = "turn"
+    turn = "turn",
+    attack = 'attack'
 }
 
 export interface Socket {
