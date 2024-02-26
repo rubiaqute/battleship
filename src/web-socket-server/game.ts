@@ -94,6 +94,10 @@ export class Battleship {
         const attackIndex = this.attacks.findIndex((attack)=> attack.id === playerId)
         const enemyIndex = this.ships.findIndex((shipList)=> shipList.id !== playerId)
 
+        if (this.attacks[attackIndex].attacks.find((attack) => attack.position.x === position.x && attack.position.y === position.y)) {
+            return []
+        }
+
         const possibleShip = this.ships[enemyIndex].ships.find((ship) => ship.coords.some((coordItem) => this.isCoordItemShot(coordItem, position)))
         let resultList: AttackResult[] = []
 
