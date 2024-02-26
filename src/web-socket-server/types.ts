@@ -71,7 +71,10 @@ export enum SHOT_RESULT {
     killed='killed'
 }
 
-export type Winner = Pick<Player, 'name' | 'index'>
+export type Winner = {
+    name: string,
+    wins: number,
+}
 
 export enum COMMAND {
     reg='reg',
@@ -82,7 +85,10 @@ export enum COMMAND {
     addShips = 'add_ships',
     startGame = "start_game",
     turn = "turn",
-    attack = 'attack'
+    attack = 'attack',
+    finish ='finish',
+    updateWinners ='update_winners',
+    randomAttack = 'randomAttack'
 }
 
 export interface Socket {

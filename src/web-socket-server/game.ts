@@ -11,12 +11,6 @@ interface CoordItem {
     isShotted: boolean
 }
 
-interface Attack {
-    x: number,
-    y: number,
-    isShoted: boolean
-}
-
 export class Battleship {
     gameInfo
     ships: {
@@ -56,7 +50,7 @@ export class Battleship {
         
     }
 
-    createShipsCoords() {
+    private createShipsCoords() {
         this.gameInfo.forEach((player)=> {
             const shipListIndex = this.ships.findIndex((shipsList) => shipsList.id === player.id)
 
@@ -82,12 +76,18 @@ export class Battleship {
         })
     }
 
-    isShipKilled(ship: ShipInfo) {
+    private isShipKilled(ship: ShipInfo) {
         return ship.coords.every((coordItem)=> Boolean(coordItem.isShotted))
     }
 
-    isCoordItemShot(coordItem: CoordItem, {x,y}: {x:number, y: number}) {
+    private isCoordItemShot(coordItem: CoordItem, {x,y}: {x:number, y: number}) {
         return coordItem.x === x && coordItem.y === y
+    }
+
+    areAllShipsKilled(playerId: number) {
+        const enemyShipList = this.ships.find((shipList) => shipList.id !== playerId)?.ships
+        
+        return enemyShipList?.every((ship)=> ship.coords.every((coordItem)=> coordItem.isShotted === true))
     }
 
     attack(playerId: number, position: {x:number, y: number}) {
@@ -131,7 +131,25 @@ export class Battleship {
         return resultList
     }
 
-    getAroundShipCells(ship: ShipInfo) {
+    private getRandomCoordinateValue() {
+        return Math.floor(Math.random() * 10)
+    }
+
+    randomAttack(playerId: number) {
+        const attackIndex = this.attacks.findIndex((attack) => attack.id === playerId)
+        const attacksList = this.attacks[attackIndex].attacks
+        let x = this.getRandomCoordinateValue()
+        let y = this.getRandomCoordinateValue()
+
+        while (Boolean(attacksList.find((attack) => attack.position.x === x && attack.position.y === y))) {
+            x = this.getRandomCoordinateValue()
+            y = this.getRandomCoordinateValue()
+        }
+
+        return this.attack(playerId, {x,y})
+    }
+
+    private getAroundShipCells(ship: ShipInfo) {
         return ship.coords.reduce<{x: number, y: number}[]>((acc, coordItem) => {
             const possibleCoords = [
                 {

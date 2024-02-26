@@ -1,10 +1,9 @@
 import { WebSocketServer, createWebSocketStream, WebSocket } from 'ws';
-import { addShipsController, addUserController, attackShipController, createGameController, createRoomController, registerPlayerController, startGameController, updateRoomsController } from './controllers';
-import { getEnemyId, getGame, updateTurn } from './data-handlers';
-import { Battleship } from './game';
-import { AddShipsPayload, AddUserToRoomPayload, Attack, AttackResult, COMMAND, CreatePlayerPayload, Game, SHOT_RESULT, Socket } from './types';
+import { addShips, addUserToRoom, attackShip, createGame, createPlayer, createRoom, deleteGame, isGameFinished, randomAttackShip, startGame, updateTurn, updateWinners, winners } from './data-handlers';
+import { sendAttackFeedback, sendCreateGame, sendDataFromWS, sendFinishGame, sendStartGame, sendTurn, sendUpdatedWinners, sendUpdateRooms, updateSocketWithPlayerId } from './socket-controllers';
+import { AddShipsPayload, AddUserToRoomPayload, Attack, COMMAND, CreatePlayerPayload, SHOT_RESULT, Socket } from './types';
 
-const sockets: Socket[] = []
+export const sockets: Socket[] = []
 
 export const initWsServer = () => {
     const WS_PORT = 3000
@@ -25,32 +24,50 @@ export const initWsServer = () => {
 
             switch (command) {
                 case COMMAND.reg: {
-                    const response = registerPlayerController(JSON.parse(request.data) as CreatePlayerPayload)
-                    currentPlayerId = response.index
-                    updateSocketWithPlayerId(socketId, currentPlayerId)
-                    
+                    const payload = JSON.parse(request.data) as CreatePlayerPayload
+                    const newPlayer = createPlayer(payload)
 
-                    sendDataFromWS(ws, COMMAND.reg, response)
-                    updateRooms()
+                    if (newPlayer) {
+                        currentPlayerId = newPlayer.index
+                        updateSocketWithPlayerId(socketId, currentPlayerId)
+
+
+                        sendDataFromWS(ws, COMMAND.reg, {
+                            name: newPlayer.name,
+                            index: newPlayer.index,
+                            error: false,
+                            errorText: "",
+                        })
+                        sendUpdateRooms()
+                        sendDataFromWS(ws, COMMAND.updateWinners, winners)
+                    } else {
+                        sendDataFromWS(ws, COMMAND.reg, {
+                            name: payload.name,
+                            index: 0,
+                            error: true,
+                            errorText: "You are already in game",
+                        })
+                    }
+                    
 
                     break; 
                 }
 
                 case COMMAND.createRoom: {
                     if (currentPlayerId) {
-                        createRoomController(currentPlayerId)
-                        updateRooms()
+                        createRoom(currentPlayerId)
+                        sendUpdateRooms()
                     }
                     break;
                 }
 
                 case COMMAND.addUserToRoom: {
                     if (currentPlayerId) {
-                        const players = addUserController(currentPlayerId, JSON.parse(request.data) as AddUserToRoomPayload)
+                        const players = addUserToRoom(currentPlayerId, JSON.parse(request.data) as AddUserToRoomPayload)
 
                         if (players) {
-                            updateRooms()
-                            const gameId = createGameController(players)
+                            sendUpdateRooms()
+                            const gameId = createGame(players)
                             sendCreateGame(gameId, players)
                         }
 
@@ -61,10 +78,10 @@ export const initWsServer = () => {
 
                 case COMMAND.addShips: {
                     const payload = JSON.parse(request.data) as AddShipsPayload
-                    const updatedGame = addShipsController(payload)
+                    const updatedGame = addShips(payload)
 
                     if (updatedGame.players.every((player)=> player.ships.length > 0)) {
-                        startGameController(updatedGame.idGame)
+                        startGame(updatedGame.idGame)
                         sendStartGame(updatedGame)
                         updateTurn(updatedGame.idGame)
                         sendTurn(updatedGame.idGame)
@@ -73,17 +90,27 @@ export const initWsServer = () => {
 
                     break;
                 }
-
+                case COMMAND.randomAttack:
                 case COMMAND.attack: {
                     const payload = JSON.parse(request.data) as Attack
-                    const resultList = attackShipController(payload)
-                    sendAttackFeedback(payload, resultList)
+                    const resultList = command === COMMAND.attack ? attackShip(payload) : randomAttackShip(payload)
 
-                    if (resultList.length === 1 && resultList[0].status === SHOT_RESULT.miss) {
-                        updateTurn(payload.gameId)
-                    } 
-                    
-                    sendTurn(payload.gameId)
+                    if (resultList.length > 0) {
+                        sendAttackFeedback(payload, resultList)
+
+                        if (resultList.length === 1 && resultList[0].status === SHOT_RESULT.miss) {
+                            updateTurn(payload.gameId)
+                        }
+
+                        sendTurn(payload.gameId)
+
+                        if (isGameFinished(payload.indexPlayer, payload.gameId)) {
+                            sendFinishGame(payload.indexPlayer, payload.gameId)
+                            updateWinners(payload.indexPlayer)
+                            sendUpdatedWinners()
+                            deleteGame(payload.gameId)
+                        }
+                    }
                 }
             }
         })
@@ -94,77 +121,3 @@ export const initWsServer = () => {
     })
 }
 
-const sendDataFromWS = (ws: WebSocket, type: COMMAND, data: object)=> {
-    ws.send(JSON.stringify({
-        type,
-        data: JSON.stringify(data),
-        id: 0
-    }))
-}
-
-const updateRooms = () => {
-    sockets.forEach(({socket}) => sendDataFromWS(socket, COMMAND.updateRoom, updateRoomsController()))
-}
-
-const sendCreateGame = (idGame: number, players: number[]) => {
-    sockets.forEach((socketItem) => {
-        if (socketItem.currentPlayer && players.includes(socketItem.currentPlayer)) {
-            sendDataFromWS(socketItem.socket, COMMAND.createGame, {
-                idGame,
-                idPlayer: socketItem.currentPlayer,
-            })
-        }
-    })
-}
-
-const updateSocketWithPlayerId = (socketId: number, currentPlayerId: number) => {
-    const socket = sockets.find((socket) => socket.id === socketId)
-
-    if (socket) {
-        socket.currentPlayer = currentPlayerId
-    }
-}
-
-const sendStartGame = (game: Game) => {
-    sockets.forEach((socketItem)=> {
-        const playerData = game.players.find((player) => player.id === socketItem.currentPlayer)
-
-        if (socketItem.currentPlayer && playerData) {
-            sendDataFromWS(socketItem.socket, COMMAND.startGame, {
-                ships: playerData.ships,
-                currentPlayerIndex: playerData.id,
-            })
-        }
-    })
-}
-
-const sendTurn  = (gameId: number) => {
-    sockets.forEach((socketItem) => {
-        const game = getGame(gameId)
-        const playerData = game?.players.find((player) => player.id === socketItem.currentPlayer)
-
-        if (socketItem.currentPlayer && playerData) {
-            sendDataFromWS(socketItem.socket, COMMAND.turn, {
-                currentPlayer: game?.turn
-            })
-        }
-    })
-}
-
-const sendAttackFeedback = (attackInfo: Attack, resultList: AttackResult[]) => {
-    sockets.forEach((socketItem) => {
-        const game = getGame(attackInfo.gameId)
-        const playerData = game?.players.find((player) => player.id === socketItem.currentPlayer)
-
-        if (socketItem.currentPlayer && playerData) {
-            resultList.forEach(({position, status})=> {
-                sendDataFromWS(socketItem.socket, COMMAND.attack, {
-                    currentPlayer: game?.turn,
-                    position,
-                    status,
-                })
-            })
-            
-        }
-    })
-}
