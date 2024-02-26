@@ -1,4 +1,5 @@
 import { Battleship } from "./game";
+import { sendFinishGame, sendUpdatedWinners } from "./socket-controllers";
 import { AddShipsPayload, Attack, CreatePlayerPayload, Game, Player, Room, Winner } from "./types";
 
 const players: Player[] = []
@@ -173,4 +174,22 @@ export const updateWinners = (playerId: number)=> {
             wins: 1
         })
     }
+}
+
+export const getGamesWithPlayer = (playerId: number) => {
+    return games.filter((game)=> game.players.some((player)=> player.id === playerId))
+}
+
+export const finishGamesWithPlayer = (playerId: number)=> {
+    const gamesWithPlayer = getGamesWithPlayer(playerId)
+
+    gamesWithPlayer.forEach((game)=> {
+        const winnerId = game.players.find((player) => player.id !== playerId)?.id
+        if (winnerId) {
+            sendFinishGame(winnerId, game.idGame)
+            updateWinners(winnerId)
+            sendUpdatedWinners()
+            deleteGame(game.idGame)
+        }
+    })
 }

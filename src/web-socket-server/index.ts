@@ -1,5 +1,5 @@
 import { WebSocketServer, createWebSocketStream, WebSocket } from 'ws';
-import { addShips, addUserToRoom, attackShip, createGame, createPlayer, createRoom, deleteGame, isGameFinished, randomAttackShip, startGame, updateTurn, updateWinners, winners } from './data-handlers';
+import { addShips, addUserToRoom, attackShip, createGame, createPlayer, createRoom, deleteGame, finishGamesWithPlayer, isGameFinished, randomAttackShip, startGame, updateTurn, updateWinners, winners } from './data-handlers';
 import { sendAttackFeedback, sendCreateGame, sendDataFromWS, sendFinishGame, sendStartGame, sendTurn, sendUpdatedWinners, sendUpdateRooms, updateSocketWithPlayerId } from './socket-controllers';
 import { AddShipsPayload, AddUserToRoomPayload, Attack, COMMAND, CreatePlayerPayload, SHOT_RESULT, Socket } from './types';
 
@@ -116,6 +116,9 @@ export const initWsServer = () => {
         })
 
         wsStream.on('close', () => {
+            if (currentPlayerId) {
+                finishGamesWithPlayer(currentPlayerId)
+            }
             wsStream.end()
         })
     })
